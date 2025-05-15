@@ -3,7 +3,11 @@ from shiny import ui, render
 import pandas as pd
 import folium
 import plotly.express as px
-from shiny_dashboard.data.migration_data import (
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from data.migration_data import (
     migration_data,
     region_coordinates,
     yeongcheon_coordinates
@@ -15,7 +19,6 @@ data_types = {
     "yeongcheon_family_members": "동반가구원"
 }
 
-# A 페이지 UI 정의
 def page_a_ui():
     return ui.page_fluid(
         ui.h1("영천시 귀촌인 현황 대시보드"),
@@ -88,7 +91,7 @@ def page_a_ui():
         )
     )
 
-# A 페이지 서버 함수
+
 def page_a_server(input, output, session):
     @render.text
     def summary_stats():
@@ -292,4 +295,5 @@ def page_a_server(input, output, session):
         
         # HTML로 변환하여 반환
         plot_html = fig.to_html(include_plotlyjs='cdn')
+
         return ui.HTML(plot_html)
