@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "shiny-dashboard"
+version = "0.1.0"
+description = "Shiny Dashboard with Poetry"
+authors = ["samdaseuss <ohj3423@naver.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+shiny = "^1.4.0"
+pandas = "^2.2.3"
+numpy = "^2.2.5"
+matplotlib = "^3.10.3"
+plotly = "^6.0.1"
+rsconnect-python = "^1.25.2"
+folium = "^0.19.5"
+geopandas = "^1.0.1"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.5"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
