@@ -377,3 +377,291 @@ m.save('귀농인구수_choropleth_최종작업.html')
 
 # # 4. 저장
 # m2.save('경상북도_귀농_지도.html')
+
+
+
+
+
+
+############################################################
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import matplotlib.cm as cm
+import folium
+import json
+
+# ✅ 한글 폰트 설정
+mpl.rc('font', family='Malgun Gothic')
+mpl.rcParams['axes.unicode_minus'] = False
+
+# === [1] 전국 귀농 인구 추이 시각화 ===
+data_national_trend = {
+    '2018': [12055], '2019': [11504], '2020': [12570],
+    '2021': [14461], '2022': [12660], '2023': [10540]
+}
+df_national_trend = pd.DataFrame(data_national_trend)
+
+x_national = np.arange(len(df_national_trend.columns))
+years_national = list(map(int, df_national_trend.columns))
+y_national = df_national_trend.iloc[0].values
+
+norm = plt.Normalize(vmin=min(y_national) * 0.95, vmax=max(y_national))
+colors = cm.Greens(norm(y_national))
+
+plt.figure(figsize=(10, 6))
+plt.bar(x_national, y_national, width=0.6, color=colors, edgecolor='black', alpha=0.8, label='귀농인수 (막대)')
+plt.plot(x_national, y_national, marker='o', linestyle='-', linewidth=2, color='blue', label='귀농인수 (선)')
+plt.xticks(x_national, years_national)
+plt.title('연도별 귀농인수 추이 (막대+선)', fontsize=14)
+plt.xlabel('연도')
+plt.ylabel('귀농인수 (명)')
+plt.grid(True, linestyle='--', alpha=0.5)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# === [2] 도별 연도별 귀농 인구 (Top5 지역 기준) ===
+data_top5_regions = {
+    '행정구역별': ['충청남도', '전라북도', '전라남도', '경상북도', '경상남도'],
+    '2018': [1328, 1335, 2039, 2196, 1518],
+    '2019': [1268, 1327, 2020, 2156, 1323],
+    '2020': [1502, 1511, 2358, 2252, 1349],
+    '2021': [1821, 1524, 2579, 2726, 1699],
+    '2022': [1595, 1237, 1987, 2579, 1530],
+    '2023': [1333, 1099, 1803, 1950, 1220]
+}
+df_top5 = pd.DataFrame(data_top5_regions)
+
+years_top5 = ['2018', '2019', '2020', '2021', '2022', '2023']
+x_top5 = np.arange(len(df_top5['행정구역별']))
+bar_width_top5 = 0.12
+
+plt.figure(figsize=(14, 6))
+for i, year in enumerate(years_top5):
+    plt.bar(x_top5 + i * bar_width_top5, df_top5[year], width=bar_width_top5, label=year)
+
+plt.xticks(x_top5 + bar_width_top5 * (len(years_top5)-1) / 2, df_top5['행정구역별'], rotation=45)
+plt.title('도별 연도별 귀농인수 (Top 5)', fontsize=14)
+plt.xlabel('행정구역별')
+plt.ylabel('귀농인수 (명)')
+plt.legend(title='연도', loc='upper right')
+plt.grid(axis='y', linestyle='--', alpha=0.5)
+plt.tight_layout()
+plt.show()
+
+# === [3] 2023 귀농인구 지도 시각화 ===
+
+# 데이터 불러오기
+df_2023_map = pd.read_csv('./df_2023.csv')
+
+# GeoJSON 로딩 및 시도 필터링
+with open('TL_SCCO_CTPRVN.json', encoding='utf-8') as f:
+    geojson_korea = json.load(f)
+
+valid_regions = [
+    "서울특별시", "부산광역시", "대구광역시", "인천광역시", "광주광역시",
+    "대전광역시", "울산광역시", "경기도", "강원도", "강원특별자치도",
+    "충청북도", "충청남도", "전라북도", "전라남도", "경상북도", "경상남도", "제주특별자치도"
+]
+
+geojson_korea['features'] = [
+    feature for feature in geojson_korea['features']
+    if feature['properties']['CTP_KOR_NM'] in valid_regions
+]
+
+label_coords = {
+    "서울특별시": [37.65, 126.95],
+    "경기도": [37.3, 127.4],
+    "인천광역시": [37.45, 126.6],
+    "충청남도": [36.4, 126.8],
+    "충청북도": [36.9, 127.8],
+    "대전광역시": [36.3, 127.4],
+    "전라남도": [34.8, 126.7],
+    "전라북도": [35.7, 127.2],
+    "경상남도": [35.2, 128.2],
+    "경상북도": [36.3, 128.8],
+    "강원도": [37.5, 128.2],
+    "강원특별자치도": [37.5, 128.2],
+    "제주특별자치도": [33.4, 126.5]
+}
+
+map_2023 = folium.Map(location=[36.5, 127.8], zoom_start=7, tiles='cartodbpositron')
+
+folium.Choropleth(
+    geo_data=geojson_korea,
+    data=df_2023_map,
+    columns=['행정구역별', '2023'],
+    key_on='feature.properties.CTP_KOR_NM',
+    fill_color='YlGnBu',
+    fill_opacity=0.7,
+    line_opacity=0.2
+).add_to(map_2023)
+
+# 라벨 추가
+for feature in geojson_korea['features']:
+    name = feature['properties']['CTP_KOR_NM']
+    if name in label_coords:
+        lat, lon = label_coords[name]
+    else:
+        coordinates = feature['geometry']['coordinates']
+        if feature['geometry']['type'] == 'MultiPolygon':
+            poly = coordinates[0][0]
+        else:
+            poly = coordinates[0]
+        lon = sum([point[0] for point in poly]) / len(poly)
+        lat = sum([point[1] for point in poly]) / len(poly)
+
+    folium.Marker(
+        [lat, lon],
+        icon=folium.DivIcon(
+            html=f"""
+            <div style="font-size: 8px; font-weight: bold;
+                        text-align: center; white-space: nowrap;
+                        transform: translate(-50%, -50%); line-height: 1;">
+                {name}
+            </div>
+            """
+        )
+    ).add_to(map_2023)
+
+# 사용자 정의 범례 추가
+legend_html = '''
+<div style="
+    position: fixed;
+    top: 100px; right: 10px;
+    width: 110px;
+    z-index:9999;
+    font-size:11px;
+    background-color:white;
+    padding:6px 8px;
+    border:1px solid grey;
+    box-shadow: 1px 1px 4px rgba(0,0,0,0.2);
+    line-height: 1.4;">
+    <b style="font-size:12px;">귀농 인구수</b><br>
+    <i style="background: #edf8b1; width: 14px; height: 14px; display: inline-block; margin-right: 6px;"></i>0 - 674<br>
+    <i style="background: #7fcdbb; width: 14px; height: 14px; display: inline-block; margin-right: 6px;"></i>675 - 993<br>
+    <i style="background: #41b6c4; width: 14px; height: 14px; display: inline-block; margin-right: 6px;"></i>994 - 1312<br>
+    <i style="background: #2c7fb8; width: 14px; height: 14px; display: inline-block; margin-right: 6px;"></i>1313 - 1631<br>
+    <i style="background: #253494; width: 14px; height: 14px; display: inline-block; margin-right: 6px;"></i>1632 - 1950
+</div>
+'''
+map_2023.get_root().html.add_child(folium.Element(legend_html))
+
+# 저장
+map_2023.fit_bounds([[33, 124], [39, 132]])
+map_2023.save("귀농인구수_choropleth_최종작업_clean.html")
+
+##########################################################
+# 아래부터 plotly
+
+
+
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+import json
+
+# === [1] 전국 귀농 인구 추이 (막대 + 선그래프) ===
+years = ['2018', '2019', '2020', '2021', '2022', '2023']
+values = [12055, 11504, 12570, 14461, 12660, 10540]
+
+df_national = pd.DataFrame({'연도': years, '귀농인수': values})
+
+fig1 = go.Figure()
+
+# 막대그래프
+fig1.add_trace(go.Bar(
+    x=df_national['연도'], 
+    y=df_national['귀농인수'],
+    name='귀농인수 (막대)',
+    marker=dict(color=df_national['귀농인수'], colorscale='Greens'),
+))
+
+# 선그래프
+fig1.add_trace(go.Scatter(
+    x=df_national['연도'], 
+    y=df_national['귀농인수'],
+    name='귀농인수 (선)',
+    mode='lines+markers',
+    line=dict(color='blue', width=2)
+))
+
+fig1.update_layout(
+    title='연도별 귀농인수 추이 (막대 + 선)',
+    xaxis_title='연도',
+    yaxis_title='귀농인수 (명)',
+    template='plotly_white'
+)
+
+fig1.show()
+
+# === [2] 도별 연도별 귀농 인구 (Top 5 지역) ===
+data_top5 = {
+    '행정구역별': ['충청남도', '전라북도', '전라남도', '경상북도', '경상남도'],
+    '2018': [1328, 1335, 2039, 2196, 1518],
+    '2019': [1268, 1327, 2020, 2156, 1323],
+    '2020': [1502, 1511, 2358, 2252, 1349],
+    '2021': [1821, 1524, 2579, 2726, 1699],
+    '2022': [1595, 1237, 1987, 2579, 1530],
+    '2023': [1333, 1099, 1803, 1950, 1220]
+}
+df_top5 = pd.DataFrame(data_top5)
+df_top5_long = df_top5.melt(id_vars='행정구역별', var_name='연도', value_name='귀농인수')
+
+fig2 = px.bar(
+    df_top5_long,
+    x='행정구역별',
+    y='귀농인수',
+    color='연도',
+    barmode='group',
+    title='도별 연도별 귀농인수 (Top 5)',
+    labels={'귀농인수': '귀농인수 (명)'}
+)
+fig2.update_layout(template='plotly_white')
+fig2.show()
+
+# === [3] 2023 귀농 인구 지도 시각화 (Choropleth) ===
+
+# 데이터 로드
+df_2023_map = pd.read_csv('./df_2023.csv')
+
+# GeoJSON 로드
+with open('TL_SCCO_CTPRVN.json', encoding='utf-8') as f:
+    geojson_korea = json.load(f)
+
+# 시도 이름 필터링
+valid_regions = [
+    "서울특별시", "부산광역시", "대구광역시", "인천광역시", "광주광역시",
+    "대전광역시", "울산광역시", "경기도", "강원도", "강원특별자치도",
+    "충청북도", "충청남도", "전라북도", "전라남도", "경상북도", "경상남도", "제주특별자치도"
+]
+geojson_korea['features'] = [
+    feature for feature in geojson_korea['features']
+    if feature['properties']['CTP_KOR_NM'] in valid_regions
+]
+
+# Plotly Choropleth
+fig3 = px.choropleth(
+    df_2023_map,
+    geojson=geojson_korea,
+    locations='행정구역별',
+    featureidkey='properties.CTP_KOR_NM',
+    color='2023',
+    color_continuous_scale='YlGnBu',
+    title='2023년 시도별 귀농인구 Choropleth',
+    labels={'2023': '귀농 인구수'}
+)
+
+fig3.update_geos(
+    fitbounds="locations",
+    visible=False
+)
+fig3.update_layout(
+    template='plotly_white',
+    margin={"r":0,"t":50,"l":0,"b":0}
+)
+fig3.show()
