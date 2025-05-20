@@ -10,14 +10,11 @@ from shiny import ui, render, reactive
 # 현재 파일의 디렉토리 경로
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# 프로젝트 루트 디렉토리 경로 (pages 디렉토리의 상위 디렉토리)
 project_root = os.path.dirname(os.path.dirname(current_dir))
 
-# 프로젝트 루트를 sys.path에 추가 (절대 경로 대신 상대 경로 임포트 가능하도록)
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-# 이제 상대 경로로 모듈 임포트
 from shiny_dashboard.data.region_comparison_data import get_data
 from shiny_dashboard.styles.styles import get_custom_css
 
