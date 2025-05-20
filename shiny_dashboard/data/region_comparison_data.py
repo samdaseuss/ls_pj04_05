@@ -1,6 +1,6 @@
 # shiny_dashboard/data/region_comparison_data.py
 
-def create_dummy_data():
+def create_raw_data():
     # 지원 정책 데이터
     policies = {
         "영천시": {
@@ -161,4 +161,4 @@ def create_dummy_data():
     }
 
 def get_data():
-    return create_dummy_data()
+    return create_raw_data()

@@ -71,5 +71,3 @@ fig.update_xaxes(
     tickvals=years,
     ticktext=years
 )
-
-fig.show()

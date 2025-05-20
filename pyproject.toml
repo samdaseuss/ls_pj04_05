@@ -15,6 +15,7 @@ plotly = "^6.0.1"
 rsconnect-python = "^1.25.2"
 folium = "^0.19.5"
 geopandas = "^1.0.1"
+shinywidgets = "^0.5.2"
 
 
 [tool.poetry.group.dev.dependencies]
